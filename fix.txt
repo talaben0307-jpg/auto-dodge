@@ -19,6 +19,7 @@ local Config = {
 	Radius = 14,
 	Offset = 5.5,
 	TweenSpeed = 0.12,
+	Mode = "Ngẫu nhiên",
 	ShowRing = true,
 	Afterimage = true,
 	MenuKey = Enum.KeyCode.RightShift,
@@ -90,19 +91,17 @@ local function createAfterimage(char)
 	end)
 end
 
--- ==================== GIAO DIỆN MENU ====================
+-- ==================== GIAO DIỆN MENU (TỐI ƯU CHO REAL EXECUTOR) ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CyberDodge_V2_UI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 9999 -- Luôn nổi lên trên cùng, đè lên mọi UI của game
 
-local success = pcall(function()
-    ScreenGui.Parent = (gethui and gethui()) or CoreGui
-end)
-if not success or not ScreenGui.Parent then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-end
+-- Dùng gethui() của executor xịn, nếu không có fallback về CoreGui
+local success, guiParent = pcall(function() return gethui() end)
+ScreenGui.Parent = success and guiParent or CoreGui
 
 local Theme = {
 	Bg = Color3.fromRGB(13, 14, 22),
@@ -131,9 +130,7 @@ local function makeDraggable(dragHandle, targetFrame)
 			dragStart = input.Position
 			startPos = targetFrame.Position
 			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
 			end)
 		end
 	end)
@@ -146,9 +143,7 @@ local function makeDraggable(dragHandle, targetFrame)
 		if input == dragInput and dragging then
 			local delta = input.Position - dragStart
 			local goalPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			TweenService:Create(targetFrame, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-				Position = goalPos
-			}):Play()
+			TweenService:Create(targetFrame, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { Position = goalPos }):Play()
 		end
 	end))
 end
@@ -160,7 +155,7 @@ MainFrame.Position = UDim2.fromScale(0.5, 0.5)
 MainFrame.Size = UDim2.fromOffset(360, 420)
 MainFrame.BackgroundColor3 = Theme.Bg
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = true
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 addCorner(MainFrame, 16)
 
@@ -429,16 +424,59 @@ local function createSlider(order, titleText, minVal, maxVal, defaultVal, suffix
 	end))
 end
 
+local function createModeSelector(order, titleText, options, defaultOpt, callback)
+	local card = Instance.new("TextButton")
+	card.LayoutOrder = order
+	card.Size = UDim2.new(1, 0, 0, 44)
+	card.BackgroundColor3 = Theme.Card
+	card.Text = ""
+	card.AutoButtonColor = false
+	card.Parent = Scroll
+	addCorner(card, 10)
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(0.5, 0, 1, 0)
+	lbl.Position = UDim2.fromOffset(14, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamSemibold
+	lbl.Text = titleText
+	lbl.TextColor3 = Theme.Text
+	lbl.TextSize = 13
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = card
+
+	local badge = Instance.new("TextLabel")
+	badge.Size = UDim2.fromOffset(115, 26)
+	badge.Position = UDim2.new(1, -127, 0.5, -13)
+	badge.BackgroundColor3 = Theme.Bg
+	badge.Font = Enum.Font.GothamBold
+	badge.Text = defaultOpt
+	badge.TextColor3 = Theme.Accent
+	badge.TextSize = 12
+	badge.Parent = card
+	addCorner(badge, 6)
+
+	local idx = table.find(options, defaultOpt) or 1
+	card.MouseButton1Click:Connect(function()
+		idx = (idx % #options) + 1
+		local chosen = options[idx]
+		badge.Text = chosen
+		callback(chosen)
+	end)
+end
+
+-- ==================== TẠO CÁC TÙY CHỌN TRONG MENU ====================
 createToggle(1, "Bật Auto Dodge (Tự động né)", Config.Enabled, function(v)
 	Config.Enabled = v
 	FloatStroke.Color = v and Theme.Accent or Theme.Danger
 end)
-createSlider(2, "Bán kính phát hiện", 5, 35, Config.Radius, " studs", function(v) Config.Radius = v RadiusRing.Size = Vector3.new(0.08, v * 2, v * 2) end)
-createSlider(3, "Khoảng cách né", 2, 15, Config.Offset, " studs", function(v) Config.Offset = v end)
-createSlider(4, "Thời gian hồi (Cooldown)", 0.1, 2.0, Config.Cooldown, " s", function(v) Config.Cooldown = v end)
-createSlider(5, "Tốc độ lướt (Tween)", 0.05, 0.35, Config.TweenSpeed, " s", function(v) Config.TweenSpeed = v end)
-createToggle(6, "Hiện vòng 3D dưới chân", Config.ShowRing, function(v) Config.ShowRing = v end)
-createToggle(7, "Hiệu ứng bóng mờ", Config.Afterimage, function(v) Config.Afterimage = v end)
+createModeSelector(2, "Hướng dịch chuyển", {"Ngẫu nhiên", "Sau lưng", "Trái / Phải"}, Config.Mode, function(v) Config.Mode = v end)
+createSlider(3, "Bán kính phát hiện", 5, 35, Config.Radius, " studs", function(v) Config.Radius = v RadiusRing.Size = Vector3.new(0.08, v * 2, v * 2) end)
+createSlider(4, "Khoảng cách né", 2, 15, Config.Offset, " studs", function(v) Config.Offset = v end)
+createSlider(5, "Thời gian hồi (Cooldown)", 0.1, 2.0, Config.Cooldown, " s", function(v) Config.Cooldown = v end)
+createSlider(6, "Tốc độ lướt (Tween)", 0.05, 0.35, Config.TweenSpeed, " s", function(v) Config.TweenSpeed = v end)
+createToggle(7, "Hiện vòng 3D dưới chân", Config.ShowRing, function(v) Config.ShowRing = v end)
+createToggle(8, "Hiệu ứng bóng mờ", Config.Afterimage, function(v) Config.Afterimage = v end)
 
 local function toggleMenu(open)
 	State.MenuOpen = open
@@ -501,7 +539,10 @@ local function performRandomDodge(attackerModel)
 	if flatDir.Magnitude < 0.01 then flatDir = Vector3.new(0, 0, -1) else flatDir = flatDir.Unit end
 	local flatEnemyCF = CFrame.lookAt(ePos, ePos + flatDir)
 
-	local choice = math.random(1, 3)
+	local choice = 1
+	if Config.Mode == "Ngẫu nhiên" then choice = math.random(1, 3)
+	elseif Config.Mode == "Sau lưng" then choice = 1
+	elseif Config.Mode == "Trái / Phải" then choice = (math.random(1, 2) == 1) and 2 or 3 end
 
 	local offsetVec
 	if choice == 1 then offsetVec = Vector3.new(0, 0, Config.Offset)
@@ -560,4 +601,12 @@ env.AutoDodge_Cleanup = function()
 	env.AutoDodge_Cleanup = nil
 end
 
-print("Cyber Dodge V2 Loaded Successfully!")
+-- ==================== LỆNH MỞ MENU (QUAN TRỌNG) ====================
+toggleMenu(true) -- Kích hoạt hiển thị UI ngay lập tức
+pcall(function()
+	game:GetService("StarterGui"):SetCore("SendNotification", {
+		Title = "⚡ Cyber Dodge V2",
+		Text = "Đã tải thành công trên Real Executor!",
+		Duration = 5,
+	})
+end)
