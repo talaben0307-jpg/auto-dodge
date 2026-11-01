@@ -19,7 +19,7 @@ local Config = {
 	Radius = 14,
 	Offset = 5.5,
 	TweenSpeed = 0.12,
-	Mode = "Ngẫu nhiên", -- "Ngẫu nhiên", "Sau lưng", "Trái / Phải"
+	Mode = "Ngẫu nhiên",
 	ShowRing = true,
 	Afterimage = true,
 	MenuKey = Enum.KeyCode.RightShift,
@@ -40,7 +40,7 @@ local function track(conn)
 	return conn
 end
 
--- ==================== HỆ THỐNG HIỆU ỨNG 3D (RING & AFTERIMAGE) ====================
+-- ==================== HỆ THỐNG HIỆU ỨNG 3D ====================
 local RadiusRing = Instance.new("Part")
 RadiusRing.Name = "AutoDodge_VisualRing"
 RadiusRing.Anchored = true
@@ -91,15 +91,20 @@ local function createAfterimage(char)
 	end)
 end
 
--- ==================== GIAO DIỆN MENU HIỆN ĐẠI (FULL ANIMATION) ====================
-local parentGui = (gethui and gethui()) or CoreGui
+-- ==================== GIAO DIỆN MENU ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CyberDodge_V2_UI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-pcall(function() ScreenGui.Parent = parentGui end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- Ép hiển thị UI (Fix lỗi không hiện GUI)
+local success = pcall(function()
+    ScreenGui.Parent = (gethui and gethui()) or CoreGui
+end)
+if not success or not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
 
 local Theme = {
 	Bg = Color3.fromRGB(13, 14, 22),
@@ -118,30 +123,6 @@ local function addCorner(parent, radius)
 	c.CornerRadius = UDim.new(0, radius)
 	c.Parent = parent
 	return c
-end
-
-local function createRipple(button)
-	button.ClipsDescendants = true
-	local ripple = Instance.new("Frame")
-	ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	ripple.BackgroundTransparency = 0.65
-	ripple.BorderSizePixel = 0
-	ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-	ripple.Position = UDim2.fromScale(0.5, 0.5)
-	ripple.Size = UDim2.fromOffset(0, 0)
-	ripple.ZIndex = button.ZIndex + 1
-	addCorner(ripple, 999)
-	ripple.Parent = button
-
-	local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2.2
-	local tw = TweenService:Create(ripple, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(maxSize, maxSize),
-		BackgroundTransparency = 1
-	})
-	tw:Play()
-	tw.Completed:Connect(function()
-		ripple:Destroy()
-	end)
 end
 
 local function makeDraggable(dragHandle, targetFrame)
@@ -174,7 +155,7 @@ local function makeDraggable(dragHandle, targetFrame)
 	end))
 end
 
--- Khung chính (Main Container)
+-- Khung chính
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -182,12 +163,9 @@ MainFrame.Position = UDim2.fromScale(0.5, 0.5)
 MainFrame.Size = UDim2.fromOffset(360, 420)
 MainFrame.BackgroundColor3 = Theme.Bg
 MainFrame.BorderSizePixel = 0
+MainFrame.Visible = true -- Ép hiển thị ngay
 MainFrame.Parent = ScreenGui
 addCorner(MainFrame, 16)
-
-local MainScale = Instance.new("UIScale")
-MainScale.Scale = 0
-MainScale.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 2.2
@@ -203,7 +181,7 @@ StrokeGradient.Color = ColorSequence.new({
 })
 StrokeGradient.Parent = MainStroke
 
--- Thanh tiêu đề (Header)
+-- Thanh tiêu đề
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 52)
 Header.BackgroundColor3 = Theme.Card
@@ -270,7 +248,7 @@ addCorner(CloseBtn, 8)
 
 makeDraggable(Header, MainFrame)
 
--- Nút nổi khi thu gọn (Floating Button)
+-- Nút nổi thu gọn
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Size = UDim2.fromOffset(52, 52)
 FloatBtn.Position = UDim2.new(0, 25, 0.5, -26)
@@ -290,7 +268,6 @@ FloatStroke.Color = Theme.Accent
 FloatStroke.Parent = FloatBtn
 makeDraggable(FloatBtn, FloatBtn)
 
--- Nội dung cuộn (Scrolling Content)
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, -24, 1, -68)
 Scroll.Position = UDim2.fromOffset(12, 58)
@@ -314,7 +291,6 @@ ScrollPad.PaddingLeft = UDim.new(0, 2)
 ScrollPad.PaddingRight = UDim.new(0, 6)
 ScrollPad.Parent = Scroll
 
--- Hàm tạo Công tắc (Animated Toggle)
 local function createToggle(order, titleText, defaultVal, callback)
 	local card = Instance.new("TextButton")
 	card.LayoutOrder = order
@@ -353,28 +329,15 @@ local function createToggle(order, titleText, defaultVal, callback)
 	addCorner(knob, 999)
 
 	local state = defaultVal
-	card.MouseEnter:Connect(function()
-		TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = Theme.CardHover}):Play()
-	end)
-	card.MouseLeave:Connect(function()
-		TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = Theme.Card}):Play()
-	end)
-
 	card.MouseButton1Click:Connect(function()
 		state = not state
-		createRipple(card)
-		TweenService:Create(switchBg, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			BackgroundColor3 = state and Theme.Success or Color3.fromRGB(55, 60, 80)
-		}):Play()
-		TweenService:Create(knob, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-		}):Play()
+		TweenService:Create(switchBg, TweenInfo.new(0.25), {BackgroundColor3 = state and Theme.Success or Color3.fromRGB(55, 60, 80)}):Play()
+		TweenService:Create(knob, TweenInfo.new(0.25), {Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)}):Play()
 		callback(state)
 	end)
 end
 
--- Hàm tạo Thanh trượt (Animated Slider)
-local function createSlider(order, titleText, minVal, maxVal, defaultVal, decimals, suffix, callback)
+local function createSlider(order, titleText, minVal, maxVal, defaultVal, suffix, callback)
 	local card = Instance.new("Frame")
 	card.LayoutOrder = order
 	card.Size = UDim2.new(1, 0, 0, 58)
@@ -421,7 +384,6 @@ local function createSlider(order, titleText, minVal, maxVal, defaultVal, decima
 	fill.BorderSizePixel = 0
 	fill.Parent = barBg
 	addCorner(fill, 999)
-
 	local fillGrad = Instance.new("UIGradient")
 	fillGrad.Color = ColorSequence.new(Theme.Accent, Theme.AccentAlt)
 	fillGrad.Parent = fill
@@ -446,23 +408,17 @@ local function createSlider(order, titleText, minVal, maxVal, defaultVal, decima
 	local function updateSlider(inputX)
 		local pct = math.clamp((inputX - barBg.AbsolutePosition.X) / barBg.AbsoluteSize.X, 0, 1)
 		local rawVal = minVal + (maxVal - minVal) * pct
-		local mult = 10 ^ decimals
-		local rounded = math.floor(rawVal * mult + 0.5) / mult
+		local rounded = math.floor(rawVal * 10 + 0.5) / 10
 		
 		valLbl.Text = tostring(rounded) .. suffix
-		TweenService:Create(fill, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(pct, 0, 1, 0)
-		}):Play()
-		TweenService:Create(knob, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(pct, 0, 0.5, 0)
-		}):Play()
+		fill.Size = UDim2.new(pct, 0, 1, 0)
+		knob.Position = UDim2.new(pct, 0, 0.5, 0)
 		callback(rounded)
 	end
 
 	hitBox.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			sliding = true
-			TweenService:Create(knob, TweenInfo.new(0.15), {Size = UDim2.fromOffset(18, 18)}):Play()
 			updateSlider(input.Position.X)
 		end
 	end)
@@ -474,12 +430,10 @@ local function createSlider(order, titleText, minVal, maxVal, defaultVal, decima
 	track(UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			sliding = false
-			TweenService:Create(knob, TweenInfo.new(0.15), {Size = UDim2.fromOffset(14, 14)}):Play()
 		end
 	end))
 end
 
--- Hàm tạo Nút chọn chế độ (Mode Selector)
 local function createModeSelector(order, titleText, options, defaultOpt, callback)
 	local card = Instance.new("TextButton")
 	card.LayoutOrder = order
@@ -517,66 +471,30 @@ local function createModeSelector(order, titleText, options, defaultOpt, callbac
 		idx = (idx % #options) + 1
 		local chosen = options[idx]
 		badge.Text = chosen
-		createRipple(card)
 		callback(chosen)
 	end)
 end
 
--- ==================== THÊM CÁC MỤC VÀO MENU ====================
 createToggle(1, "Bật Auto Dodge (Tự động né)", Config.Enabled, function(v)
 	Config.Enabled = v
 	FloatStroke.Color = v and Theme.Accent or Theme.Danger
 end)
+createModeSelector(2, "Hướng dịch chuyển", {"Ngẫu nhiên", "Sau lưng", "Trái / Phải"}, Config.Mode, function(v) Config.Mode = v end)
+createSlider(3, "Bán kính phát hiện", 5, 35, Config.Radius, " studs", function(v) Config.Radius = v RadiusRing.Size = Vector3.new(0.08, v * 2, v * 2) end)
+createSlider(4, "Khoảng cách né", 2, 15, Config.Offset, " studs", function(v) Config.Offset = v end)
+createSlider(5, "Thời gian hồi (Cooldown)", 0.1, 2.0, Config.Cooldown, " s", function(v) Config.Cooldown = v end)
+createSlider(6, "Tốc độ lướt (Tween)", 0.05, 0.35, Config.TweenSpeed, " s", function(v) Config.TweenSpeed = v end)
+createToggle(7, "Hiện vòng 3D dưới chân", Config.ShowRing, function(v) Config.ShowRing = v end)
+createToggle(8, "Hiệu ứng bóng mờ", Config.Afterimage, function(v) Config.Afterimage = v end)
 
-createModeSelector(2, "Hướng dịch chuyển", {"Ngẫu nhiên", "Sau lưng", "Trái / Phải"}, Config.Mode, function(v)
-	Config.Mode = v
-end)
-
-createSlider(3, "Bán kính phát hiện (Radius)", 5, 35, Config.Radius, 0, " studs", function(v)
-	Config.Radius = v
-	RadiusRing.Size = Vector3.new(0.08, v * 2, v * 2)
-end)
-
-createSlider(4, "Khoảng cách né (Offset)", 2, 15, Config.Offset, 1, " studs", function(v)
-	Config.Offset = v
-end)
-
-createSlider(5, "Thời gian hồi (Cooldown)", 0.1, 2.0, Config.Cooldown, 2, " s", function(v)
-	Config.Cooldown = v
-end)
-
-createSlider(6, "Tốc độ lướt (Tween Time)", 0.05, 0.35, Config.TweenSpeed, 2, " s", function(v)
-	Config.TweenSpeed = v
-end)
-
-createToggle(7, "Hiện vòng tròn tầm né (3D Ring)", Config.ShowRing, function(v)
-	Config.ShowRing = v
-end)
-
-createToggle(8, "Hiệu ứng bóng mờ (Afterimage)", Config.Afterimage, function(v)
-	Config.Afterimage = v
-end)
-
--- Hiệu ứng đóng / mở Menu mượt mà
 local function toggleMenu(open)
 	State.MenuOpen = open
 	if open then
 		FloatBtn.Visible = false
 		MainFrame.Visible = true
-		TweenService:Create(MainScale, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Scale = 1
-		}):Play()
 	else
-		local tw = TweenService:Create(MainScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Scale = 0
-		})
-		tw:Play()
-		tw.Completed:Connect(function()
-			if not State.MenuOpen then
-				MainFrame.Visible = false
-				FloatBtn.Visible = true
-			end
-		end)
+		MainFrame.Visible = false
+		FloatBtn.Visible = true
 	end
 end
 
@@ -586,19 +504,8 @@ CloseBtn.MouseButton1Click:Connect(function()
 	if env.AutoDodge_Cleanup then env.AutoDodge_Cleanup() end
 end)
 
-track(UserInputService.InputBegan:Connect(function(input, gp)
-	if not gp and input.KeyCode == Config.MenuKey then
-		toggleMenu(not State.MenuOpen)
-	end
-end))
-
--- Mở menu lúc mới chạy
-toggleMenu(true)
-
--- Vòng lặp xoay Gradient & Cập nhật vòng tròn 3D dưới chân
 track(RunService.RenderStepped:Connect(function(dt)
 	StrokeGradient.Rotation = (StrokeGradient.Rotation + dt * 95) % 360
-	
 	local char = LocalPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if hrp and Config.ShowRing and Config.Enabled then
@@ -614,10 +521,8 @@ track(RunService.RenderStepped:Connect(function(dt)
 	end
 end))
 
--- ==================== LOGIC NÉ ĐÒN ĐÃ FIX LỖI ====================
 local function performRandomDodge(attackerModel)
 	if not Config.Enabled or State.IsDodging then return end
-	
 	local myChar = LocalPlayer.Character
 	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
@@ -628,7 +533,6 @@ local function performRandomDodge(attackerModel)
 	local enemyHum = attackerModel:FindFirstChildOfClass("Humanoid")
 	if not (enemyHRP and enemyHum and enemyHum.Health > 0) then return end
 
-	-- Kiểm tra khoảng cách
 	local dist = (myHRP.Position - enemyHRP.Position).Magnitude
 	if dist > Config.Radius then return end
 
@@ -636,79 +540,45 @@ local function performRandomDodge(attackerModel)
 	State.DodgeCount += 1
 	SubTitle.Text = ("Đã né thành công: %d đòn"):format(State.DodgeCount)
 
-	-- Tạo bóng mờ tại vị trí cũ
 	createAfterimage(myChar)
 
-	-- Tính toán mặt phẳng ngang (Chống lỗi lún đất / bay lên trời)
 	local ePos = enemyHRP.Position
 	local flatLook = enemyHRP.CFrame.LookVector
 	local flatDir = Vector3.new(flatLook.X, 0, flatLook.Z)
-	if flatDir.Magnitude < 0.01 then
-		flatDir = Vector3.new(0, 0, -1)
-	else
-		flatDir = flatDir.Unit
-	end
+	if flatDir.Magnitude < 0.01 then flatDir = Vector3.new(0, 0, -1) else flatDir = flatDir.Unit end
 	local flatEnemyCF = CFrame.lookAt(ePos, ePos + flatDir)
 
-	-- Chọn hướng né
 	local choice = 1
-	if Config.Mode == "Ngẫu nhiên" then
-		choice = math.random(1, 3)
-	elseif Config.Mode == "Sau lưng" then
-		choice = 1
-	elseif Config.Mode == "Trái / Phải" then
-		choice = (math.random(1, 2) == 1) and 2 or 3
-	end
+	if Config.Mode == "Ngẫu nhiên" then choice = math.random(1, 3)
+	elseif Config.Mode == "Sau lưng" then choice = 1
+	elseif Config.Mode == "Trái / Phải" then choice = (math.random(1, 2) == 1) and 2 or 3 end
 
 	local offsetVec
-	if choice == 1 then
-		offsetVec = Vector3.new(0, 0, Config.Offset) -- Sau lưng
-	elseif choice == 2 then
-		offsetVec = Vector3.new(Config.Offset, 0, 0) -- Bên phải
-	else
-		offsetVec = Vector3.new(-Config.Offset, 0, 0) -- Bên trái
-	end
+	if choice == 1 then offsetVec = Vector3.new(0, 0, Config.Offset)
+	elseif choice == 2 then offsetVec = Vector3.new(Config.Offset, 0, 0)
+	else offsetVec = Vector3.new(-Config.Offset, 0, 0) end
 
 	local targetPos = (flatEnemyCF * CFrame.new(offsetVec)).Position
-	-- Giữ nguyên độ cao Y hợp lý để tránh kẹt sàn
 	local safePos = Vector3.new(targetPos.X, ePos.Y, targetPos.Z)
 	local finalCFrame = CFrame.lookAt(safePos, Vector3.new(ePos.X, safePos.Y, ePos.Z))
 
-	-- Triệt tiêu vận tốc tránh bị văng
 	myHRP.AssemblyLinearVelocity = Vector3.zero
-
-	local dodgeTween = TweenService:Create(
-		myHRP,
-		TweenInfo.new(Config.TweenSpeed, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
-		{ CFrame = finalCFrame }
-	)
-	dodgeTween:Play()
+	TweenService:Create(myHRP, TweenInfo.new(Config.TweenSpeed, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), { CFrame = finalCFrame }):Play()
 
 	task.delay(Config.Cooldown, function()
 		State.IsDodging = false
 	end)
 end
 
--- Lọc các Remote rác không phải đòn đánh
-local IGNORE_KEYWORDS = { "chat", "emote", "sound", "audio", "music", "ui", "gui", "stat", "ping", "footstep", "Leaderboard" }
-local function isIgnoredRemote(name)
-	local lower = string.lower(name)
-	for _, kw in ipairs(IGNORE_KEYWORDS) do
-		if lower:find(kw, 1, true) then return true end
-	end
-	return false
-end
-
 local function hookRemote(remote)
 	if not remote:IsA("RemoteEvent") then return end
-	if hookedRemotes[remote] or isIgnoredRemote(remote.Name) then return end
+	if hookedRemotes[remote] then return end
 	hookedRemotes[remote] = true
 
 	track(remote.OnClientEvent:Connect(function(...)
 		if not Config.Enabled or State.IsDodging then return end
 		local myChar = LocalPlayer.Character
 		if not myChar then return end
-
 		for _, arg in ipairs({...}) do
 			if typeof(arg) == "Instance" then
 				if arg:IsA("Model") and arg ~= myChar then
@@ -726,25 +596,18 @@ end
 task.spawn(function()
 	local Knit = ReplicatedStorage:WaitForChild("Knit", 8)
 	local targetFolder = Knit or ReplicatedStorage
-	for _, desc in ipairs(targetFolder:GetDescendants()) do
-		hookRemote(desc)
-	end
+	for _, desc in ipairs(targetFolder:GetDescendants()) do hookRemote(desc) end
 	track(targetFolder.DescendantAdded:Connect(hookRemote))
 end)
 
--- Hàm dọn dẹp sạch sẽ khi tắt hoặc chạy lại script
 env.AutoDodge_Cleanup = function()
 	Config.Enabled = false
-	for _, c in ipairs(connections) do
-		pcall(function() c:Disconnect() end)
-	end
+	for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
 	table.clear(connections)
 	table.clear(hookedRemotes)
-	for _, obj in ipairs(visualObjects) do
-		pcall(function() obj:Destroy() end)
-	end
-	if ScreenGui then
-		pcall(function() ScreenGui:Destroy() end)
-	end
+	for _, obj in ipairs(visualObjects) do pcall(function() obj:Destroy() end) end
+	if ScreenGui then pcall(function() ScreenGui:Destroy() end) end
 	env.AutoDodge_Cleanup = nil
 end
+
+print("Cyber Dodge V2 Loaded Successfully!")
